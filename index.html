@@ -1,0 +1,872 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Benner SQL · Assistente</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Space+Mono:ital,wght@0,400;0,700;1,400&family=DM+Sans:wght@300;400;500;600&display=swap');
+
+:root {
+  --bg: #f5f2eb;
+  --surface: #ffffff;
+  --border: #e0d9cc;
+  --accent: #1a1a2e;
+  --accent2: #c84b31;
+  --muted: #8a8070;
+  --text: #1a1a1a;
+  --tag: #e8e2d8;
+  --success: #2d6a4f;
+  --code-bg: #1a1a2e;
+  --code-text: #a8ff78;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'DM Sans', sans-serif;
+  min-height: 100vh;
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+  grid-template-columns: 280px 1fr;
+  grid-template-areas: "sidebar header" "sidebar main" "sidebar footer";
+}
+
+.sidebar {
+  grid-area: sidebar;
+  background: var(--accent);
+  color: #fff;
+  padding: 2rem 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  overflow-y: auto;
+}
+
+.logo { font-family: 'Space Mono', monospace; font-size: 1.1rem; font-weight: 700; letter-spacing: -0.02em; line-height: 1.2; }
+.logo span { color: #c84b31; }
+.logo-sub { font-size: 0.65rem; color: rgba(255,255,255,0.35); letter-spacing: 0.12em; text-transform: uppercase; margin-top: 0.4rem; font-family: 'Space Mono', monospace; }
+
+.sidebar-section { border-top: 1px solid rgba(255,255,255,0.08); padding-top: 1.25rem; }
+.sidebar-label { font-size: 0.6rem; text-transform: uppercase; letter-spacing: 0.2em; color: rgba(255,255,255,0.3); margin-bottom: 0.75rem; font-family: 'Space Mono', monospace; }
+.sidebar-stat { display: flex; justify-content: space-between; align-items: center; padding: 0.35rem 0; font-size: 0.8rem; color: rgba(255,255,255,0.6); border-bottom: 1px solid rgba(255,255,255,0.05); }
+.sidebar-stat strong { color: #fff; font-family: 'Space Mono', monospace; font-size: 0.75rem; }
+
+.historico-list { display: flex; flex-direction: column; gap: 0.4rem; max-height: 200px; overflow-y: auto; }
+.historico-item { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.08); border-radius: 6px; padding: 0.5rem 0.75rem; color: rgba(255,255,255,0.65); font-size: 0.72rem; cursor: pointer; transition: all 0.2s; line-height: 1.4; text-align: left; width: 100%; font-family: 'DM Sans', sans-serif; }
+.historico-item:hover { background: rgba(200,75,49,0.2); border-color: #c84b31; color: #fff; }
+.historico-vazio { font-size: 0.72rem; color: rgba(255,255,255,0.25); font-family: 'Space Mono', monospace; }
+
+.example-queries { display: flex; flex-direction: column; gap: 0.4rem; }
+.example-btn { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.08); border-radius: 6px; padding: 0.55rem 0.75rem; color: rgba(255,255,255,0.65); font-size: 0.72rem; cursor: pointer; text-align: left; transition: all 0.2s; font-family: 'DM Sans', sans-serif; line-height: 1.4; width: 100%; }
+.example-btn:hover { background: rgba(200,75,49,0.2); border-color: #c84b31; color: #fff; }
+
+.sidebar-footer { margin-top: auto; font-size: 0.62rem; color: rgba(255,255,255,0.2); font-family: 'Space Mono', monospace; line-height: 1.6; }
+
+.header { grid-area: header; background: var(--surface); border-bottom: 1px solid var(--border); padding: 1rem 2rem; display: flex; align-items: center; justify-content: space-between; }
+.header-title { font-size: 0.85rem; font-weight: 500; color: var(--muted); }
+.header-title strong { color: var(--text); }
+.status-dot { display: flex; align-items: center; gap: 0.5rem; font-size: 0.75rem; color: var(--success); font-family: 'Space Mono', monospace; }
+.dot { width: 7px; height: 7px; border-radius: 50%; background: var(--success); animation: pulse 2s infinite; }
+@keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
+
+.main { grid-area: main; padding: 2rem; overflow-y: auto; display: flex; flex-direction: column; gap: 1.5rem; max-height: calc(100vh - 130px); }
+
+.message { display: flex; flex-direction: column; gap: 0.5rem; animation: fadeIn 0.3s ease; }
+@keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+.message.user { align-items: flex-end; }
+.message.assistant { align-items: flex-start; }
+.msg-label { font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.15em; color: var(--muted); font-family: 'Space Mono', monospace; }
+.msg-bubble { max-width: 75%; padding: 1rem 1.25rem; border-radius: 12px; font-size: 0.9rem; line-height: 1.6; }
+.message.user .msg-bubble { background: var(--accent); color: #fff; border-bottom-right-radius: 4px; }
+.message.assistant .msg-bubble { background: var(--surface); border: 1px solid var(--border); border-bottom-left-radius: 4px; width: 100%; max-width: 100%; }
+
+.sql-block { margin-top: 1rem; background: var(--code-bg); border-radius: 8px; overflow: hidden; }
+.sql-header { display: flex; justify-content: space-between; align-items: center; padding: 0.5rem 1rem; background: rgba(255,255,255,0.04); border-bottom: 1px solid rgba(255,255,255,0.06); }
+.sql-label { font-family: 'Space Mono', monospace; font-size: 0.65rem; color: rgba(255,255,255,0.3); text-transform: uppercase; letter-spacing: 0.15em; }
+.copy-btn { background: none; border: 1px solid rgba(255,255,255,0.15); color: rgba(255,255,255,0.5); font-size: 0.7rem; padding: 0.2rem 0.6rem; border-radius: 4px; cursor: pointer; font-family: 'Space Mono', monospace; transition: all 0.2s; width: auto; margin: 0; }
+.copy-btn:hover { background: rgba(255,255,255,0.08); color: #fff; transform: none; }
+.sql-code { padding: 1rem; font-family: 'Space Mono', monospace; font-size: 0.78rem; color: var(--code-text); line-height: 1.7; white-space: pre-wrap; word-break: break-word; }
+
+.tables-used { margin-top: 0.75rem; display: flex; flex-wrap: wrap; gap: 0.4rem; }
+.table-tag { background: var(--tag); border: 1px solid var(--border); border-radius: 4px; padding: 0.2rem 0.5rem; font-size: 0.68rem; font-family: 'Space Mono', monospace; color: var(--muted); }
+
+.thinking { display: flex; align-items: center; gap: 0.75rem; padding: 1rem 1.25rem; background: var(--surface); border: 1px solid var(--border); border-radius: 12px; border-bottom-left-radius: 4px; font-size: 0.82rem; color: var(--muted); }
+.thinking-dots { display: flex; gap: 4px; }
+.thinking-dots span { width: 6px; height: 6px; background: #c84b31; border-radius: 50%; animation: bounce 1.2s infinite; }
+.thinking-dots span:nth-child(2) { animation-delay: 0.2s; }
+.thinking-dots span:nth-child(3) { animation-delay: 0.4s; }
+@keyframes bounce { 0%, 100% { transform: translateY(0); opacity: 0.4; } 50% { transform: translateY(-5px); opacity: 1; } }
+
+.welcome { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 2rem; text-align: center; }
+.welcome h2 { font-size: 1.4rem; font-weight: 600; margin-bottom: 0.5rem; }
+.welcome p { color: var(--muted); font-size: 0.88rem; line-height: 1.6; }
+
+.clarificacao-pergunta { font-size: 0.88rem; margin-bottom: 0.75rem; color: var(--text); line-height: 1.5; font-weight: 500; }
+.clarificacao-botoes { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 0.5rem; }
+.clarificacao-btn { background: var(--surface); border: 1.5px solid var(--accent); color: var(--accent); border-radius: 8px; padding: 0.5rem 1rem; font-size: 0.82rem; cursor: pointer; font-family: 'DM Sans', sans-serif; font-weight: 500; transition: all 0.2s; width: auto; margin: 0; text-align: left; }
+.clarificacao-btn:hover { background: var(--accent); color: #fff; transform: translateY(-1px); }
+
+.refinamento-wrap { margin-top: 1rem; padding-top: 0.75rem; border-top: 1px solid var(--border); }
+.refinamento-label { font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.12em; color: var(--muted); margin-bottom: 0.5rem; font-family: 'Space Mono', monospace; }
+.refinamento-btns { display: flex; flex-wrap: wrap; gap: 0.4rem; }
+.refinamento-btn { background: var(--bg); border: 1px solid var(--border); color: var(--muted); border-radius: 6px; padding: 0.35rem 0.75rem; font-size: 0.75rem; cursor: pointer; font-family: 'DM Sans', sans-serif; transition: all 0.2s; width: auto; margin: 0; }
+.refinamento-btn:hover { border-color: var(--accent2); color: var(--accent2); transform: none; }
+
+.aviso-vazio { margin-top: 0.75rem; padding: 0.75rem; background: #fff8e1; border: 1px solid #ffe082; border-radius: 6px; font-size: 0.78rem; line-height: 1.6; color: #795548; }
+.validacao-ok { margin-top: 0.5rem; font-size: 0.75rem; color: var(--success); }
+.validacao-err { margin-top: 0.75rem; padding: 0.75rem; background: #fff0ee; border: 1px solid #f5c0b8; border-radius: 6px; font-size: 0.78rem; line-height: 1.7; }
+
+.footer { grid-area: footer; background: var(--surface); border-top: 1px solid var(--border); padding: 1rem 2rem; }
+.input-wrap { display: flex; gap: 0.75rem; align-items: flex-end; background: var(--bg); border: 1.5px solid var(--border); border-radius: 10px; padding: 0.75rem 1rem; transition: border-color 0.2s; }
+.input-wrap:focus-within { border-color: var(--accent); }
+textarea { flex: 1; background: none; border: none; outline: none; font-family: 'DM Sans', sans-serif; font-size: 0.9rem; color: var(--text); resize: none; min-height: 24px; max-height: 120px; line-height: 1.5; }
+textarea::placeholder { color: var(--muted); }
+.send-btn { background: var(--accent); color: #fff; border: none; border-radius: 7px; width: 36px; height: 36px; cursor: pointer; display: flex; align-items: center; justify-content: center; flex-shrink: 0; transition: all 0.2s; margin: 0; padding: 0; }
+.send-btn:hover:not(:disabled) { background: #c84b31; transform: scale(1.05); }
+.send-btn:disabled { opacity: 0.3; cursor: not-allowed; transform: none; }
+.send-btn svg { width: 16px; height: 16px; }
+.input-hint { font-size: 0.68rem; color: var(--muted); margin-top: 0.4rem; font-family: 'Space Mono', monospace; }
+.error-bubble { background: #fff0ee; border: 1px solid #f5c0b8; color: #c84b31; padding: 0.75rem 1rem; border-radius: 8px; font-size: 0.82rem; }
+</style>
+</head>
+<body>
+
+<aside class="sidebar">
+  <div>
+    <div class="logo">Benner<br><span>SQL</span> Assistant</div>
+    <div class="logo-sub">// FIESC · Corporativo</div>
+  </div>
+
+  <div class="sidebar-section">
+    <div class="sidebar-label">Status</div>
+    <div class="sidebar-stat"><span>Dicionário</span><strong id="statRegistros">...</strong></div>
+    <div class="sidebar-stat"><span>Banco</span><strong>Oracle 8i</strong></div>
+    <div class="sidebar-stat"><span>IA</span><strong>Gemini</strong></div>
+  </div>
+
+  <div class="sidebar-section">
+    <div class="sidebar-label">Histórico da sessão</div>
+    <div class="historico-list" id="historicoList">
+      <div class="historico-vazio">Nenhuma consulta ainda</div>
+    </div>
+  </div>
+
+  <div class="sidebar-section">
+    <div class="sidebar-label">Exemplos</div>
+    <div class="example-queries">
+      <button class="example-btn" onclick="useExample(this)">Filiais ativas do SESI</button>
+      <button class="example-btn" onclick="useExample(this)">Saldo de estoque do CD</button>
+      <button class="example-btn" onclick="useExample(this)">Contratos aprovados vigentes</button>
+      <button class="example-btn" onclick="useExample(this)">RNs finalizadas do mês atual</button>
+      <button class="example-btn" onclick="useExample(this)">Variações ativas de uma filial</button>
+    </div>
+  </div>
+
+  <div class="sidebar-footer">
+    ⚠️ Gera apenas SELECT<br>
+    Cole o SQL no Benner<br>
+    para ver os resultados
+  </div>
+</aside>
+
+<header class="header">
+  <div class="header-title"><strong>Assistente de consultas</strong> · Digite em português, receba o SQL</div>
+  <div class="status-dot"><div class="dot"></div> online</div>
+</header>
+
+<main class="main" id="main">
+  <div class="welcome">
+    <h2>Olá! 👋</h2>
+    <p>Digite o que você precisa consultar no Benner em português.<br>
+    Quando houver dúvida sobre o que você quer, o assistente vai perguntar antes de gerar o SQL.</p>
+  </div>
+</main>
+
+<footer class="footer">
+  <div class="input-wrap">
+    <textarea id="input" placeholder="Ex: quero ver o saldo de estoque do CD por produto..." rows="1"
+      onkeydown="handleKey(event)" oninput="autoResize(this)"></textarea>
+    <button class="send-btn" id="sendBtn" onclick="enviar()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+        <line x1="22" y1="2" x2="11" y2="13"></line>
+        <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+      </svg>
+    </button>
+  </div>
+  <div class="input-hint">Enter para enviar · Shift+Enter para nova linha</div>
+</footer>
+
+<script>
+const NEON_URL    = 'https://ep-round-water-ac8hap0q.sa-east-1.aws.neon.tech';
+const NEON_KEY    = 'npg_Y9kPZh5IepEU';
+const GEMINI_KEY  = 'AIzaSyDujzEB60sOZ_Whc7fJlIWR58P0OI85LkQ';
+const GEMINI_URL  = `https://generativelanguage.googleapis.com/v1/models/gemini-2.5-flash:generateContent?key=${GEMINI_KEY}`;
+
+async function neonQuery(sql, params=[]) {
+  const res = await fetch(`${NEON_URL}/sql`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Neon-Connection-String': `postgresql://neondb_owner:${NEON_KEY}@ep-round-water-ac8hap0q.sa-east-1.aws.neon.tech/neondb?sslmode=require` },
+    body: JSON.stringify({ query: sql, params })
+  });
+  const data = await res.json();
+  return data.rows || [];
+}
+
+let isLoading = false;
+let historicoConversa = [];
+let ultimoSQL = '';
+let ultimoContexto = '';
+let aguardandoClarificacao = null;
+let historicoSessao = [];
+
+// ========== STATS ==========
+async function loadStats() {
+  try {
+    const rows = await neonQuery('SELECT COUNT(*) as total FROM dicionario_benner');
+    const count = rows[0]?.total;
+    document.getElementById('statRegistros').textContent = count ? `${parseInt(count).toLocaleString('pt-BR')} campos` : 'ok';
+  } catch(e) { document.getElementById('statRegistros').textContent = 'conectado'; }
+}
+
+// ========== RAG ==========
+const SINONIMOS = {
+  'pessoa': ['pessoa','pessoas','individuo','cliente','funcionario','colaborador','contato','empregado'],
+  'contato': ['contato','contatos','telefone','email'],
+  'empresa': ['empresa','empresas','organizacao','companhia','entidade','instituicao'],
+  'filial': ['filial','filiais','unidade','unidades','sede'],
+  'cargo': ['cargo','cargos','funcao','funcoes'],
+  'documento': ['documento','documentos','nota','fiscal','nf','nfe'],
+  'produto': ['produto','produtos','item','itens','material','materiais'],
+  'pedido': ['pedido','pedidos','ordem','ordens','solicitacao'],
+  'contrato': ['contrato','contratos','acordo','acordos','ata','atas'],
+  'pagamento': ['pagamento','pagamentos','financeiro','financeira','conta','contas','recebimento'],
+  'estoque': ['estoque','estoques','almoxarifado','inventario','saldo'],
+  'fornecedor': ['fornecedor','fornecedores'],
+  'grupo': ['grupo','grupos','agrupamento','categoria','categorias'],
+  'endereco': ['endereco','enderecos','logradouro','cep','cidade','estado'],
+  'rn': ['rn','necessidade','requisicao','requisicoes','registro'],
+  'variacao': ['variacao','variacoes','conjuntovariacoes'],
+  'apontamento': ['apontamento','apontamentos'],
+  'regional': ['regional','regionais','regiao','regioes'],
+};
+
+function removerAcentos(s) { return s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase(); }
+
+function expandirTermos(pergunta) {
+  const texto = removerAcentos(pergunta).replace(/[^a-z0-9\s]/g, ' ');
+  const stopwords = new Set(['que','quais','como','para','com','por','uma','uns','das','dos','nos','nas','sao','tem','ter','ser','foi','seja','todos','todas','quero','ver','mostrar','listar','buscar','pelo','pela','todos','essa','este','esse','isto','onde','quando','qual','quem','sobre','mais','menos']);
+  const palavras = texto.split(/\s+/).filter(p => p.length > 2 && !stopwords.has(p));
+  const termos = new Set(palavras);
+  palavras.forEach(p => {
+    Object.entries(SINONIMOS).forEach(([chave, sins]) => {
+      if (sins.includes(p) || p.includes(chave) || chave.includes(p)) sins.forEach(s => termos.add(s));
+    });
+  });
+  return [...termos];
+}
+
+async function buscarContexto(pergunta) {
+  const termos = expandirTermos(pergunta);
+  const resultados = new Map();
+
+  const fetches = termos.slice(0, 10).map(termo =>
+    neonQuery(
+      `SELECT tabela_nome, tabela_legenda, campo_nome, campo_legenda, campo_tipo
+       FROM dicionario_benner
+       WHERE tabela_legenda ILIKE $1 OR campo_legenda ILIKE $1
+          OR tabela_nome ILIKE $1 OR campo_nome ILIKE $1
+       LIMIT 150`,
+      [`%${termo}%`]
+    ).catch(() => [])
+  );
+
+  const respostas = await Promise.all(fetches);
+
+  respostas.forEach(dados => {
+    if (!Array.isArray(dados)) return;
+    dados.forEach(d => {
+      const key = d.tabela_nome;
+      if (!resultados.has(key)) resultados.set(key, { legenda: d.tabela_legenda, campos: [] });
+      const campos = resultados.get(key).campos;
+      if (!campos.find(c => c.nome === d.campo_nome)) campos.push({ nome: d.campo_nome, legenda: d.campo_legenda, tipo: d.campo_tipo });
+    });
+  });
+
+  return resultados;
+}
+
+function formatarContexto(resultados) {
+  if (resultados.size === 0) return 'Nenhuma tabela encontrada.';
+  let ctx = '';
+  for (const [tabela, info] of resultados) {
+    ctx += `\nTABELA: ${tabela} (${info.legenda})\n`;
+    info.campos.slice(0, 20).forEach(c => { ctx += `  - ${c.nome}: ${c.legenda || ''}${c.tipo ? ` [${c.tipo}]` : ''}\n`; });
+  }
+  return ctx;
+}
+
+// ========== CLARIFICAÇÃO INTELIGENTE ==========
+async function verificarClarificacao(pergunta, contexto) {
+  const prompt = `Você é um assistente que analisa perguntas sobre banco de dados do ERP Benner da FIESC.
+
+Analise a pergunta do usuário e decida se ela é AMBIGUA em relação a:
+1. TABELA: pode ser respondida por tabelas diferentes com resultados diferentes
+2. CAMPOS: não está claro quais informações/campos o usuario quer ver
+3. FILTROS: não está claro como filtrar (por qual período, empresa, filial, status etc)
+
+Se for ambigua em QUALQUER aspecto, monte perguntas de clarificação.
+Seja preciso e prático — nao pergunte o obvio, so o que realmente muda o SQL.
+
+Exemplos de ambiguidade REAL:
+- "contatos de uma pessoa" → ambigua: dados da propria pessoa (GN_PESSOAS: email, nome) OU contatos terceiros vinculados (GN_PESSOACONTATOS: nome contato, telefone, cargo, ramal)
+- "saldo do contrato" → ambigua: saldo de quantidade de itens OU saldo financeiro/valor
+- "movimentacoes" sem contexto → ambigua: estoque ou financeiro
+- "contratos" sem filtro → ambigua: qual empresa, qual status, qual periodo
+
+Exemplos NAO ambiguos:
+- "filiais ativas do SESI" → claro: FILIAIS com K_FILIAL_ATIVA='S' e EMPRESA=1
+- "saldo de estoque do CD" → claro: PD_ALMOXARIFADOVARIACOES
+- "RNs finalizadas do mes atual" → claro: K9_PD_REGISTRONECESSIDADES STATUS=1004
+
+Se AMBIGUA responda SOMENTE com JSON:
+{"ambigua": true, "perguntas": [{"pergunta": "texto da pergunta", "opcoes": ["opcao1", "opcao2", "opcao3"]}]}
+
+Pode ter 1 a 3 perguntas. Cada pergunta tem 2 a 4 opcoes curtas e objetivas.
+
+Se NAO ambigua responda SOMENTE com:
+{"ambigua": false}
+
+Pergunta do usuario: ${pergunta}
+
+Responda APENAS com o JSON:`;
+
+  try {
+    const res = await fetch(GEMINI_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        contents: [{ parts: [{ text: prompt }] }],
+        generationConfig: { temperature: 0, maxOutputTokens: 512 }
+      })
+    });
+    const data = await res.json();
+    const texto = data.candidates?.[0]?.content?.parts?.[0]?.text || '{"ambigua": false}';
+    const clean = texto.replace(/```json|```/g, '').trim();
+    return JSON.parse(clean);
+  } catch(e) { return { ambigua: false }; }
+}
+
+// ========== GEMINI SQL ==========
+async function chamarGemini(pergunta, contexto) {
+  const isRefinamento = historicoConversa.length > 0 && ultimoSQL;
+
+  const systemPrompt = `Você é um especialista sênior em SQL para o ERP Benner rodando em Oracle 8i.
+Você conhece profundamente os padrões internos do Benner e do Oracle. Gere sempre o SQL mais completo e correto possível.
+
+REGRAS OBRIGATÓRIAS DE SINTAXE:
+- Gere APENAS o comando SELECT completo e executável, sem explicações antes ou depois
+- O SELECT DEVE SEMPRE ter: SELECT ... FROM <tabela> — NUNCA omita o FROM
+- NÃO use ponto-e-vírgula no final
+- Use sintaxe Oracle 8i: ROWNUM, SYSDATE, NVL, TO_DATE, DECODE, MONTHS_BETWEEN, KEEP DENSE_RANK, etc
+- Use aliases descritivos nas colunas
+- Prefira JOINs explícitos com ON
+- Se houver filtro na pergunta (nome, código, data), sempre inclua no WHERE
+- Use UPPER() e LIKE para filtros de texto: UPPER(campo) LIKE UPPER(\'%valor%\')
+
+PADRÕES OBRIGATÓRIOS DO ERP BENNER (aprendidos de consultas reais da FIESC):
+
+=== CHAVES E JOINS ===
+- A chave primária de TODA tabela do Benner é o campo HANDLE
+- JOINs são SEMPRE: TABELA_A.CAMPO_FK = TABELA_B.HANDLE
+- Exemplo CORRETO: JOIN GN_PESSOAS P ON D.PESSOA = P.HANDLE
+- Exemplo ERRADO: JOIN GN_PESSOAS P ON D.PESSOA = P.PESSOA
+- NÃO use ponto-e-vírgula no final do SQL
+
+=== TABELAS PRINCIPAIS E SEUS USOS ===
+- FILIAIS: dados cadastrais de filiais (NOME, CGC, CODIGO, EMPRESA, ESTADO, MUNICIPIO, LOGRADOURO, CEP, K_FILIAL_ATIVA, REGIAO)
+- EMPRESAS: cadastro de empresas (HANDLE, NOME, NOMEFANTASIA) — EMPRESA 1=SESI, 2=SENAI, 3=FIESC, 4=IEL, 5=CIESC
+- GN_PESSOAS: cadastro de pessoas/fornecedores (HANDLE, NOME, CGCCPF, EMAIL, MUNICIPIO, ESTADO, MATRICULA)
+- GN_REGIOES: regiões (HANDLE, NOME, CODIGOREDUZIDO)
+- K9_GN_REGIAOFILIAIS: vínculo entre regiões e filiais (REGIAO, FILIAL)
+- MUNICIPIOS: municípios (HANDLE, NOME)
+- ESTADOS: estados (HANDLE, NOME)
+- Z_GRUPOUSUARIOS: usuários do sistema (HANDLE, NOME, EMAIL)
+
+=== PRODUTOS E ESTOQUE ===
+- PD_PRODUTOS: cadastro de produtos (HANDLE, CODIGO, NOME, FAMILIA, GRUPOCOMPRAS, FILIAL, ATIVO, TIPO, TIPOFISCAL)
+- PD_PRODUTOVARIACOESMESTRE: variações de produto (HANDLE, CODIGOREFERENCIA, CONJUNTOVARIACOES, CUSTOMATERIAL, K9_ATIVANORN, DATAINCLUSAO, SINALIZACAO, FAMILIA)
+  * K9_ATIVANORN: \'9A\'=ATIVA, \'9C\'=CONSUMO, \'9I\'=INATIVA
+  * CODIGOREFERENCIA faz JOIN com PD_PRODUTOS.HANDLE
+- PD_FAMILIASPRODUTOS: famílias de produtos (HANDLE, FAMILIA, NOME, GRUPOCOMPRAS)
+  * FAMILIA é o código hierárquico ex: \'1.08.%\'
+- CP_GRUPOCOMPRAS: grupos de compras (HANDLE, NOME)
+- PD_ALMOXARIFADOVARIACOES: saldo de estoque por almoxarifado (HANDLE, VARIACAO, ALMOXARIFADO, ESTOQUEDISPONIVEL, ESTOQUEMINIMO, ESTOQUEMAXIMO, PONTOREPOSICAO, DATAULTIMAMOVIMENTACAO)
+- PD_ALMOXARIFADOS: almoxarifados/CDs (HANDLE, NOME)
+- PD_MOVIMENTACAOVARIACAO: movimentações de estoque (HANDLE, VARIACAO, PRODUTO, FILIAL, ALMOXARIFADODESTINO, TIPOMOVIMENTACAO, DATAHORAMOVIMENTACAO, QUANTIDADE, SALDOANTERIOR, SALDOATUAL, VALORUNITARIO, VALORTOTAL, CANCELADO, PESSOA, DOCUMENTO, ORDEM)
+  * CANCELADO = \'N\' para movimentações válidas
+  * TIPOMOVIMENTACAO: 1=Consumo, 7=Recebimento fiscal, 27=Transferência entre filiais, 33=Ajuste saída, 41=Baixa direta, 61=Entrada direta
+- PD_CODIGOSMOVIMENTACAO: tipos de movimentação (HANDLE, NOME, BALANCETE)
+- PD_ALMOXARIFADOLOCALIZACOES: localizações no almoxarifado (HANDLE, NOME)
+- PD_ALMOXARIFADOPRODUTOLOCALIZA: vínculo produto x localização (PRODUTO, LOCALIZACAO)
+- PD_SINALIZACAO: sinalizações de variação (HANDLE, NOME)
+- PD_PRODUTOSPAI: produtos pai (HANDLE, NOME, CODIGOREFERENCIA, FAMILIA)
+
+=== CONTRATOS ===
+- CN_CONTRATOS: contratos (HANDLE, NUMERO, PESSOA, EMPRESA, TIPOCONTRATO, STATUS, DATAINICIO, DATAFIM, OBJETOCONTRATO, K_VALORINICIAL, K9_ENCERRADOCOMPENDENCIASFINAN)
+  * STATUS: 1=Em elaboração, 2=Aprovado, 3=Encerrado, 4=Cancelado, 5=Suspenso
+- CN_CONTRATOOBJETOS: itens do contrato (HANDLE, CONTRATO, PRODUTO, VARIACAO, POSICAO, VALORUNITARIO, QUANTIDADE, TOTALGERAL, SALDO, SALDOVALOR, SALDOACUMULADO, SALDOVALORACUMULADO, DATARESCISAOOBJETO, DESCRICAO)
+- CN_TIPOSCONTRATOS: tipos de contrato (HANDLE, NOME, TIPO, EHCONTRATOCONVENIO)
+- CN_APONTAMENTOS: apontamentos de contrato (HANDLE, CONTRATO, PESSOA, FILIAL, SEQUENCIA)
+- CN_APONTAMENTOOBJETOS: vínculo apontamento x objeto (HANDLE, APONTAMENTO, OBJETO)
+- CN_CONTRATOCOORDENADORES: coordenadores do contrato (HANDLE, CONTRATO, USUARIO)
+
+=== REGISTROS DE NECESSIDADE (RN) ===
+- K9_PD_REGISTRONECESSIDADES: RNs/requisições (HANDLE, NUMERONECESSIDADE, EMPRESA, FILIAL, PRODUTO, VARIACAO, FINALIDADEPRODUTO, CONTAFINANCEIRA, REGIAO, REGIAOAVALIADORA, REQUISITANTE, COMPRADOR, STATUS, TIPO, DATA, QUANTIDADE, VALORUNIESTIMADO, VALORTOTESTIMADO, TIPOATENDIMENTO, OBSERVACAO, FAMILIA, CENTROCUSTO, DATACOMPRADORASSUMIU, NUMERONEGOCIACAOPORTAL, MODALIDADECOMPRAPORTAL)
+  * STATUS: 1001=Cadastrado, 1002=Em aprovação, 1003=Aprovado, 1004=Finalizado, 1005=Cancelado, 1006=Rejeitado, 1009=Em atendimento
+  * TIPO = 1001 para RN geral
+  * TIPOATENDIMENTO: 1002=Chave, 1004=Apontamento, 1005=Contrato, 1006=OC
+- K9_PD_FINALIDADEPRODUTOS: finalidades de produto (HANDLE, FINALIDADE, CONTAFINANCEIRA, PRODUTOPAI, ATIVA)
+- K9_PD_NECESSIDADEFINALIDADES: finalidades (HANDLE, NOME, EMPRESA)
+- K9_PD_APONTAMENTONECESSIDADES: vínculo RN x apontamento (HANDLE, NECESSIDADE, APONTAMENTO, CONTRATOOBJETO)
+- K9_PD_REQUISICAONECESSIDADES: vínculo RN x requisição (NECESSIDADE, ORDEMCOMPRAITEM)
+
+=== COMPRAS ===
+- CP_REQUISICOES: requisições (HANDLE, NUMERO, FILIAL, PRODUTO, VARIACAO, ALMOXARIFADOORIGEM, STATUS, SALDOPENDENTE, REQUISICAOPAI, USUARIOINCLUIU)
+- CP_REQUISICOESPAI: cabeçalho da requisição (HANDLE, NUMERO, STATUS, DATAINCLUSAO)
+- CP_ORDENSCOMPRA: ordens de compra (HANDLE, FORNECEDOR)
+- CP_ORDENSCOMPRAITENS: itens da OC (HANDLE, ORDEMCOMPRA)
+
+=== FINANCEIRO ===
+- FN_DOCUMENTOS: documentos fiscais (HANDLE, DOCUMENTODIGITADO, DATAEMISSAO, DATAENTRADA, FILIAL, PESSOA, EMPRESA, STATUS, OPERACAOFATURAMENTO, ABRANGENCIA, VALORLIQUIDO, QUANTIDADETRANSPORTADA, PESOLIQUIDO, INFORMACOESADICIONAIS)
+  * ABRANGENCIA: \'A\'=Abrangência, \'R\'=Requisição
+  * STATUS: 1=Atendendo, 2=Atendida
+- FN_CONTAS: contas financeiras (HANDLE, NOME, CODIGOREDUZIDO, ESTRUTURA, EMPRESA)
+- FN_CONTACONTASCONTABEIS: vínculo conta financeira x contábil (CONTAFINANCEIRA, CONTACONTABIL)
+- CM_ITENS: itens de documento comercial (HANDLE, DOCUMENTO, PRODUTO, VARIACAO, QUANTIDADE, VALORUNITARIO, VALORTOTAL)
+- CM_OPERACOESFATURAMENTO: operações de faturamento (HANDLE, NOME, CODIGO)
+- TS_LANCAMENTOS: lançamentos de tesouraria (HANDLE, OPERACAO, FILIAL, EMPRESA, CONTATESOURARIA, DATAEMISSAO, VALORLANCAMENTO, DOCUMENTOCONTABIL, HISTORICO, TIPOORIGEM)
+- FN_CONTASTESOURARIA: contas de tesouraria (HANDLE, NOME)
+- CT_LANCAMENTOS: lançamentos contábeis (HANDLE, DOCUMENTO, DOCUMENTOCONTABIL, NATUREZA)
+- CT_CONTAS: contas contábeis (HANDLE, NOME, CODIGOREDUZIDO, ESTRUTURA)
+- CT_CC: centros de custo (HANDLE, NOME, CODIGO)
+- FN_MOVIMENTACOES: movimentações financeiras (HANDLE, LANCAMENTOTESOURARIA, PESSOA, OPERACAO, DOCUMENTO)
+- GN_OPERACOES: operações (HANDLE, NOME, CODIGOREDUZIDO)
+
+=== ATIVO IMOBILIZADO ===
+- AT_ITENS: itens do ativo (HANDLE, EMPRESA, FILIAL, PLAQUETA, CODIGOREDUZIDO, SUFIXO, NOME, VALOR, DATAAQUISICAO, PERIODOAQUISICAO, DATAINCLUSAO, CONTA, GRUPO, LOCALIZACAO, CENTROCUSTO, VARIACAOMESTRE, PRODUTOPAI, K_RESPONSAVEL, DEPRECIACAO, DOCUMENTODIGITADO, DATAULTIMABAIXA, K_ESPERABAIXA, MODELOITEM, ITEM, K_MOTIVO_BAIXA, K_DESTINO_BAIXA, K9_JUSTIFICATIVA_BAIXA)
+- AT_ITEMCALCULOS: cálculos de depreciação (HANDLE, ITEM, DATA, DEPRECIACAOACUMULADA)
+- AT_GRUPOSIMOBILIZADO: grupos do imobilizado (HANDLE, NOME, ESTRUTURA)
+- AT_DESTINOSBAIXA: destinos de baixa (HANDLE, NOME)
+- AT_MOTIVOSBAIXA: motivos de baixa (HANDLE, NOME)
+- GN_LOCALIZACOES: localizações físicas (HANDLE, NOME, ESTRUTURA)
+
+=== PADRÕES DE DECODE PARA EMPRESA ===
+Sempre use: DECODE(campo_empresa, \'1\',\'SESI\', \'2\',\'SENAI\', \'3\',\'FIESC\', \'4\',\'IEL\', \'5\',\'CIESC\')
+Ou com inteiro: DECODE(campo_empresa, 1,\'SESI\', 2,\'SENAI\', 3,\'FIESC\', 4,\'IEL\')
+
+=== CAMPOS BOOLEANOS E STATUS ===
+- Campos lógicos: \'S\' = Sim, \'N\' = Não
+- ATIVO = \'S\' para registros ativos
+- CANCELADO = \'N\' para movimentações válidas
+- K_FILIAL_ATIVA = \'S\' para filiais ativas
+
+
+=== TABELAS ADICIONAIS DO 3o BLOCO ===
+- CN_APONTAMENTOS: apontamentos (HANDLE, CONTRATO, EMPRESA, FILIAL, DATA, STATUS, SEQUENCIA, VALORTOTAL, RESPONSAVEL)
+  * STATUS: 3=Aprovado, 1001=Aguardando aceite portal
+- CN_APONTAMENTOOBJETOS: vinculo apontamento x objeto (HANDLE, APONTAMENTO, OBJETO, QUANTIDADELIBERADA, QUANTIDADEMEDIDA, VALORTOTAL)
+- CP_RECEBIMENTOFISICO: recebimento fisico (HANDLE, APONTAMENTO, QTDEENTREGA, VALOR)
+- K9_PD_PORTALCOMPRASMODALIDADES: modalidades portal (HANDLE, NOME)
+- K_REGIONAIS_FILIAIS: vinculo regional x filial (FILIAL, REGIONAL, DATAINICIO, DATAFIM, SUBREGIAODETALHE)
+- K_REGIONAIS: regionais (HANDLE, NOME, DATAINICIO, DATAFIM, GEREX)
+- K_REGIONAIS_GEREX: gerencias regionais (HANDLE, NOME)
+- K_SUBREGIOES: sub-regioes (HANDLE, NOME)
+- K_SUBREGIOES_DETALHES: detalhes sub-regiao (HANDLE, SUBREGIAO)
+- PD_PRODUTOSPAI: produtos pai (HANDLE, NOME, CODIGOREFERENCIA, FAMILIA, EMPRESA)
+- GN_LOCALIZACOES: localizacoes fisicas (HANDLE, NOME, ESTRUTURA)
+- FILIAIS campos: LOGRADOURO, NUMERO, COMPLEMENTO, BAIRRO, CEP, REGIAO, EMPRESA, CODIGO, CGC, K_FILIAL_ATIVA, K_CARACTERIZACAOUNIDADE, K_AREATOTAL, ALMOXARIFADOCOMPRAS
+- PD_ALMOXARIFADOVARIACOES campos: ESTOQUEEMPEDIDO, ESTOQUEBLOQUEADO, LOCALIZACAO, DATAULTIMAMOVIMENTACAO
+- PD_PRODUTOS.TIPO: 1=Produto, 2=Manufaturado, 3=Servico, 4=Custo, 5=Generico, 6=Subcontratado
+- PD_PRODUTOS.TIPOFISCAL: 1=Mercadoria revenda, 2=Mat-prima, 7=Mat uso e consumo, 8=Ativo imobilizado
+
+=== PADROES DE JOIN CRITICOS DESCOBERTOS ===
+- Para consumo mensal: TRUNC(data, \'mm\') agrupa por mes
+- FILIAIS.CGC = GN_PESSOAS.CGCCPF e o JOIN para encontrar filial pelo CNPJ da pessoa
+- Campos de USUÁRIO INTERNO (quem executou a ação): REQUISITANTE, COMPRADOR, RESPONSAVEL, COORDENADOR, USUARIOINCLUIU → JOIN SEMPRE com Z_GRUPOUSUARIOS (HANDLE, NOME, EMAIL)
+- Campos de ENTIDADE EXTERNA (fornecedor, contratado, pessoa física/jurídica): PESSOA, FORNECEDOR, CONTRATADO → JOIN SEMPRE com GN_PESSOAS (HANDLE, NOME, CGCCPF)
+- NUNCA use GN_PESSOAS para campos de usuário interno como REQUISITANTE ou COMPRADOR
+- PD_PRODUTOVARIACOESMESTRE.CODIGOREFERENCIA faz JOIN com PD_PRODUTOS.HANDLE (nao com CODIGO!)
+- Status contrato NOT IN (3,4) = exclui Encerrado e Cancelado (contratos vigentes)
+- DATARESCISAOOBJETO IS NULL = item do contrato ainda vigente
+- Para coordenador use subquery com MIN() agrupado por contrato para evitar duplicatas
+- Para RN com apontamento: K9_PD_REGISTRONECESSIDADES > K9_PD_APONTAMENTONECESSIDADES > CN_APONTAMENTOOBJETOS > CN_APONTAMENTOS
+- Para filtrar familia: PD_FAMILIASPRODUTOS.FAMILIA LIKE \'1.08.%\'
+- Para filtrar filial por codigo externo: FILIAIS.CODIGO = <numero>
+- Variacoes ativas: K9_ATIVANORN = \'9A\', consumo: \'9C\', inativas: \'9I\'
+- Produto ativo: PD_PRODUTOS.ATIVO = \'S\'
+- Filial ativa: FILIAIS.K_FILIAL_ATIVA = \'S\'
+
+=== BOAS PRÁTICAS OBSERVADAS NAS CONSULTAS REAIS ===
+- Use REGEXP_REPLACE(TRIM(campo), \'[[:cntrl:]]\', \' \') para limpar campos de texto/memo
+- Use REPLACE(REPLACE(campo, CHR(10), \' \'), CHR(13), \' \') para remover quebras de linha
+- Use MONTHS_BETWEEN(TRUNC(SYSDATE), data) para calcular meses entre datas
+- Use KEEP (DENSE_RANK FIRST ORDER BY data DESC) para pegar o valor mais recente em GROUP BY
+- Use TO_DATE(\'DD/MM/YYYY\', \'DD/MM/YYYY\') para filtros de data
+- Filiais têm CODIGO numérico e HANDLE — use CODIGO para filtrar por código externo
+- NÃO coloque URLs ou links nos nomes de campos
+- NUNCA invente campos — use apenas os listados no dicionário ou nesta documentação
+- Se não tiver certeza de um campo, adicione comentário /* verificar campo X */
+
+DICIONÁRIO DE DADOS DISPONÍVEL:
+${contexto}`;
+
+  const messages = [
+    { parts: [{ text: systemPrompt }], role: 'user' },
+    { parts: [{ text: 'Entendido. Aguardo suas perguntas.' }], role: 'model' }
+  ];
+
+  historicoConversa.forEach(h => {
+    messages.push({ parts: [{ text: h.pergunta }], role: 'user' });
+    messages.push({ parts: [{ text: h.sql }], role: 'model' });
+  });
+
+  let perguntaFinal = pergunta;
+  if (isRefinamento && !pergunta.includes('especificamente:')) {
+    perguntaFinal = `O SQL anterior foi:\n${ultimoSQL}\n\nAjuste conforme: ${pergunta}`;
+  }
+  messages.push({ parts: [{ text: perguntaFinal + '\n\nResponda APENAS com o SELECT Oracle SQL completo, com SELECT e FROM:' }], role: 'user' });
+
+  const res = await fetch(GEMINI_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ contents: messages, generationConfig: { temperature: 0.1, maxOutputTokens: 8192 } })
+  });
+  const data = await res.json();
+  if (data.error) throw new Error(data.error.message);
+  return data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+}
+
+function limparSQL(texto) {
+  return texto
+    .replace(/```sql\n?/gi, '')
+    .replace(/```\n?/g, '')
+    .replace(/;$/, '')
+    .replace(/\[([^\]]+)\]\(https?:\/\/[^)]+\)/g, '$1')
+    .trim();
+}
+
+// ========== VALIDAÇÃO ==========
+async function validarCamposSQL(sql, contextoBusca) {
+  const avisos = [];
+  const regexTabelas = /(?:FROM|JOIN)\s+([A-Z][A-Z0-9_]+)\s+(?:AS\s+)?([A-Z][A-Z0-9_]*)/gi;
+  const tabelaAlias = {};
+  let m;
+  while ((m = regexTabelas.exec(sql)) !== null) tabelaAlias[m[2].toUpperCase()] = m[1].toUpperCase();
+
+  const regexCampos = /\b([A-Z][A-Z0-9_]*)\.([A-Z][A-Z0-9_]*)\b/g;
+  const matches = [...sql.matchAll(regexCampos)];
+  const reservadas = new Set(['SELECT','FROM','WHERE','JOIN','ON','AND','OR','NOT','IN','AS','BY','ORDER','GROUP','HAVING','INNER','LEFT','RIGHT','FULL','OUTER','UPPER','LOWER','NVL','DECODE','ROWNUM','SYSDATE','COUNT','MAX','MIN','SUM','AVG','DISTINCT','CASE','WHEN','THEN','ELSE','END','NULL','LIKE','BETWEEN','EXISTS','UNION','KEEP','DENSE_RANK','FIRST','LAST','OVER','PARTITION','TRUNC','TO_DATE','TO_CHAR','MONTHS_BETWEEN','REPLACE','CHR','CONCAT','TRIM','REGEXP_REPLACE','ROUND','SUBSTR','DECODE']);
+  const verificados = new Set();
+
+  for (const match of matches) {
+    const alias = match[1].toUpperCase();
+    const campo = match[2].toUpperCase();
+    const chave = alias + '.' + campo;
+    if (verificados.has(chave) || reservadas.has(campo) || reservadas.has(alias) || campo === 'HANDLE') continue;
+    verificados.add(chave);
+    const tabelaNome = tabelaAlias[alias];
+    if (!tabelaNome) continue;
+    const tabelaCtx = contextoBusca.get(tabelaNome);
+    if (tabelaCtx && !tabelaCtx.campos.find(c => c.nome.toUpperCase() === campo)) {
+      try {
+        const dados = await neonQuery(
+          `SELECT campo_nome FROM dicionario_benner WHERE tabela_nome=$1 AND campo_nome=$2 LIMIT 1`,
+          [tabelaNome, campo]
+        );
+        if (!Array.isArray(dados) || dados.length === 0) avisos.push(`⚠️ <strong>${alias}.${campo}</strong> não encontrado em <strong>${tabelaNome}</strong>`);
+      } catch(e) {}
+    }
+  }
+  return avisos;
+}
+
+// ========== ENVIAR ==========
+async function enviar() {
+  const input = document.getElementById('input');
+  const pergunta = input.value.trim();
+  if (!pergunta || isLoading) return;
+
+  isLoading = true;
+  document.getElementById('sendBtn').disabled = true;
+  input.value = '';
+  input.style.height = 'auto';
+
+  document.querySelector('.welcome')?.remove();
+  addMessage('user', pergunta);
+  const thinkingId = addThinking();
+
+  try {
+    const resultados = await buscarContexto(pergunta);
+    const contexto = formatarContexto(resultados);
+    const tabelasEncontradas = [...resultados.keys()];
+
+    // Verifica clarificação
+    const clarif = await verificarClarificacao(pergunta, contexto);
+
+    if (clarif.ambigua && clarif.perguntas?.length > 0) {
+      removeThinking(thinkingId);
+      aguardandoClarificacao = { pergunta, contexto, tabelasEncontradas, resultados };
+      addClarificacaoMessage(clarif.perguntas);
+      isLoading = false;
+      document.getElementById('sendBtn').disabled = false;
+      return;
+    }
+
+    await gerarEExibirSQL(pergunta, contexto, tabelasEncontradas, resultados, thinkingId);
+
+  } catch(e) {
+    removeThinking(thinkingId);
+    addErrorMessage(e.message);
+    isLoading = false;
+    document.getElementById('sendBtn').disabled = false;
+  }
+}
+
+async function gerarEExibirSQL(pergunta, contexto, tabelasEncontradas, resultados, thinkingId) {
+  try {
+    const sqlBruto = await chamarGemini(pergunta, contexto);
+    const sql = limparSQL(sqlBruto);
+    const validacao = await validarCamposSQL(sql, resultados);
+
+    ultimoSQL = sql;
+    ultimoContexto = contexto;
+    historicoConversa.push({ pergunta, sql });
+    if (historicoConversa.length > 5) historicoConversa.shift();
+
+    adicionarHistoricoSessao(pergunta);
+    removeThinking(thinkingId);
+    addSQLMessage(sql, tabelasEncontradas, validacao, pergunta);
+  } catch(e) {
+    removeThinking(thinkingId);
+    addErrorMessage(e.message);
+  }
+  isLoading = false;
+  document.getElementById('sendBtn').disabled = false;
+  document.getElementById('input').focus();
+}
+
+// ========== UI FUNCTIONS ==========
+function addMessage(role, text) {
+  const main = document.getElementById('main');
+  const div = document.createElement('div');
+  div.className = `message ${role}`;
+  div.innerHTML = `<div class="msg-label">${role === 'user' ? 'você' : 'assistente'}</div><div class="msg-bubble">${escapeHtml(text)}</div>`;
+  main.appendChild(div);
+  main.scrollTop = main.scrollHeight;
+}
+
+function addClarificacaoMessage(perguntas) {
+  const main = document.getElementById('main');
+  const id = 'clarif_' + Date.now();
+  const div = document.createElement('div');
+  div.className = 'message assistant';
+  div.id = id;
+
+  let html = '<div class="msg-label">assistente</div><div class="msg-bubble">';
+  html += '<div style="margin-bottom:0.75rem;font-size:0.88rem;">Antes de gerar o SQL, preciso entender melhor o que você precisa:</div>';
+
+  perguntas.forEach((p, pi) => {
+    html += `<div class="clarificacao-pergunta">${escapeHtml(p.pergunta)}</div>`;
+    html += '<div class="clarificacao-botoes">';
+    p.opcoes.forEach(op => {
+      const opEsc = op.replace(/'/g, "\'").replace(/"/g, '&quot;');
+      html += `<button class="clarificacao-btn" data-pergunta-idx="${pi}" data-opcao="${opEsc}" onclick="escolherOpcao('${id}', this)">${op}</button>`;
+    });
+    html += '</div>';
+  });
+
+  html += '</div></div>';
+  div.innerHTML = html;
+  main.appendChild(div);
+  main.scrollTop = main.scrollHeight;
+}
+
+function escolherOpcao(msgId, btn) {
+  if (!aguardandoClarificacao) return;
+
+  const opcao = btn.getAttribute('data-opcao');
+  const pergIdx = btn.getAttribute('data-pergunta-idx');
+
+  // Marca o botão selecionado
+  const bloco = btn.closest('.clarificacao-botoes');
+  bloco.querySelectorAll('.clarificacao-btn').forEach(b => b.style.opacity = '0.4');
+  btn.style.opacity = '1';
+  btn.style.background = 'var(--accent)';
+  btn.style.color = '#fff';
+  btn.disabled = true;
+
+  // Desabilita todos os botões
+  document.getElementById(msgId).querySelectorAll('.clarificacao-btn').forEach(b => b.disabled = true);
+
+  const { pergunta, contexto, tabelasEncontradas, resultados } = aguardandoClarificacao;
+  aguardandoClarificacao = null;
+
+  const perguntaRefinada = `${pergunta} — especificamente: ${opcao}`;
+
+  isLoading = true;
+  document.getElementById('sendBtn').disabled = true;
+  const thinkingId = addThinking();
+
+  gerarEExibirSQL(perguntaRefinada, contexto, tabelasEncontradas, resultados, thinkingId);
+}
+
+function addSQLMessage(sql, tabelas, avisos, perguntaOriginal) {
+  const main = document.getElementById('main');
+  const id = 'sql_' + Date.now();
+  const div = document.createElement('div');
+  div.className = 'message assistant';
+
+  const tagsHTML = tabelas.slice(0, 8).map(t => `<span class="table-tag">${t}</span>`).join('');
+
+  const validacaoHTML = avisos.length > 0
+    ? `<div class="validacao-err">⚠️ Campos não confirmados no dicionário:<br>${avisos.join('<br>')}<br><small>Verifique antes de executar.</small></div>`
+    : `<div class="validacao-ok">✅ Campos validados no dicionário</div>`;
+
+  const avisoVazioHTML = avisos.length > 0
+    ? `<div class="aviso-vazio">💡 Se o resultado vier vazio no Benner, pode ser que o dado esteja em outra tabela ou o filtro precise de ajuste. Tente reformular ou use os botões abaixo para refinar.</div>`
+    : '';
+
+  const refinamentoHTML = `
+    <div class="refinamento-wrap">
+      <div class="refinamento-label">Refinar consulta</div>
+      <div class="refinamento-btns">
+        <button class="refinamento-btn" onclick="refinar('Filtrar por data — adicione um filtro de período')">+ Filtrar por data</button>
+        <button class="refinamento-btn" onclick="refinar('Adicionar mais campos ao SELECT')">+ Mais campos</button>
+        <button class="refinamento-btn" onclick="refinar('Filtrar por empresa ou filial específica')">+ Filtrar empresa/filial</button>
+        <button class="refinamento-btn" onclick="refinar('Limitar a 100 resultados usando ROWNUM')">+ Limitar resultados</button>
+        <button class="refinamento-btn" onclick="refinar('Ordenar os resultados por data ou nome')">+ Ordenar</button>
+      </div>
+    </div>`;
+
+  div.innerHTML = `
+    <div class="msg-label">assistente</div>
+    <div class="msg-bubble">
+      <div>Aqui está o SELECT baseado no dicionário do Benner:</div>
+      <div class="sql-block">
+        <div class="sql-header">
+          <span class="sql-label">Oracle SQL</span>
+          <button class="copy-btn" onclick="copiarSQL('${id}')">copiar</button>
+        </div>
+        <div class="sql-code" id="${id}">${escapeHtml(sql)}</div>
+      </div>
+      ${tabelas.length > 0 ? `<div class="tables-used">${tagsHTML}</div>` : ''}
+      ${validacaoHTML}
+      ${avisoVazioHTML}
+      ${refinamentoHTML}
+    </div>
+  `;
+  main.appendChild(div);
+  main.scrollTop = main.scrollHeight;
+}
+
+function refinar(instrucao) {
+  const input = document.getElementById('input');
+  input.value = instrucao;
+  autoResize(input);
+  input.focus();
+}
+
+function addThinking() {
+  const main = document.getElementById('main');
+  const id = 'thinking_' + Date.now();
+  const div = document.createElement('div');
+  div.className = 'message assistant';
+  div.id = id;
+  div.innerHTML = `<div class="msg-label">assistente</div><div class="thinking"><div class="thinking-dots"><span></span><span></span><span></span></div>Buscando no dicionário e gerando SQL...</div>`;
+  main.appendChild(div);
+  main.scrollTop = main.scrollHeight;
+  return id;
+}
+
+function removeThinking(id) { document.getElementById(id)?.remove(); }
+
+function addErrorMessage(msg) {
+  const main = document.getElementById('main');
+  const div = document.createElement('div');
+  div.className = 'message assistant';
+  div.innerHTML = `<div class="msg-label">assistente</div><div class="msg-bubble"><div class="error-bubble">⚠️ Erro: ${msg}</div></div>`;
+  main.appendChild(div);
+  main.scrollTop = main.scrollHeight;
+}
+
+function copiarSQL(id) {
+  const sql = document.getElementById(id).textContent;
+  navigator.clipboard.writeText(sql).then(() => {
+    const btn = document.getElementById(id).closest('.sql-block').querySelector('.copy-btn');
+    btn.textContent = 'copiado!';
+    setTimeout(() => btn.textContent = 'copiar', 2000);
+  });
+}
+
+function escapeHtml(text) {
+  return text
+    .replace(/&/g,'&amp;')
+    .replace(/</g,'&lt;')
+    .replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;')
+    .replace(/'/g,'&#39;');
+}
+
+function adicionarHistoricoSessao(pergunta) {
+  historicoSessao.unshift(pergunta);
+  if (historicoSessao.length > 10) historicoSessao.pop();
+  renderHistorico();
+}
+
+function renderHistorico() {
+  const el = document.getElementById('historicoList');
+  if (historicoSessao.length === 0) {
+    el.innerHTML = '<div class="historico-vazio">Nenhuma consulta ainda</div>';
+    return;
+  }
+  el.innerHTML = historicoSessao.map(p =>
+    `<button class="historico-item" data-full="${escapeHtml(p)}" onclick="useHistorico(this)">${escapeHtml(p.length > 60 ? p.substring(0,60)+'...' : p)}</button>`
+  ).join('');
+}
+
+function useHistorico(btn) {
+  const input = document.getElementById('input');
+  input.value = btn.dataset.full || btn.textContent.trim();
+  autoResize(input);
+  input.focus();
+}
+
+function useExample(btn) {
+  const input = document.getElementById('input');
+  input.value = btn.textContent;
+  autoResize(input);
+  input.focus();
+}
+
+function handleKey(e) {
+  if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) {
+    e.preventDefault();
+    enviar();
+  }
+}
+
+function autoResize(el) {
+  el.style.height = 'auto';
+  el.style.height = Math.min(el.scrollHeight, 120) + 'px';
+}
+
+loadStats();
+</script>
+</body>
+</html>
