@@ -205,8 +205,7 @@ textarea::placeholder { color: var(--muted); }
 <script>
 const NEON_URL    = 'https://ep-round-water-ac8hap0q.sa-east-1.aws.neon.tech';
 const NEON_KEY    = 'npg_Y9kPZh5IepEU';
-const GEMINI_KEY  = 'AIzaSyDujzEB60sOZ_Whc7fJlIWR58P0OI85LkQ';
-const GEMINI_URL  = `https://generativelanguage.googleapis.com/v1/models/gemini-2.5-flash:generateContent?key=${GEMINI_KEY}`;
+const GEMINI_URL  = 'https://benner-sql-proxy.a2d84418.workers.dev';
 
 async function neonQuery(sql, params=[]) {
   const res = await fetch(`${NEON_URL}/sql`, {
